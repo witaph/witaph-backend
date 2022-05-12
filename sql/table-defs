@@ -1,0 +1,67 @@
+CREATE TABLE Images (
+    imageID int NOT NULL AUTO_INCREMENT,
+    dateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    name varchar(255),
+    sourceURL varchar(255) NOT NULL,
+    sourceURL2 varchar(255),
+    state varchar(10),
+    country varchar(10),
+    dateCaptured DATETIME NOT NULL,
+    PRIMARY KEY (imageID)
+);
+
+CREATE INDEX idx_imageID on Images(imageID);
+
+CREATE TABLE Tags (
+    tagID int NOT NULL AUTO_INCREMENT,
+    dateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    tagText varchar(255) NOT NULL,
+    PRIMARY KEY (tagID)
+);
+
+CREATE INDEX idx_tagID on Tags(tagID);
+
+CREATE TABLE ImageTags (
+    dateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    imageID int NOT NULL,
+    tagID int NOT NULL,
+    PRIMARY KEY (imageID, tagID),
+    FOREIGN KEY (imageID) REFERENCES Images(imageID),
+    FOREIGN KEY (tagID) REFERENCES Tags(tagID)
+);
+
+CREATE INDEX idx_imageTagID on ImageTags(tagID);
+
+CREATE TABLE AlbumTypes (
+    albumTypeID int NOT NULL AUTO_INCREMENT,
+    dateCreated DATETIME NOT NULL DFAULT CURRENT_TIMESTAMP,
+    albumTypeName varchar(255) NOT NULL,
+    PRIMARY KEY (albumTypeID)
+);
+
+CREATE INDEX idx_albumTypeID on AlbumTypes(albumTypeID);
+
+CREATE TABLE Albums (
+    albumID int NOT NULL AUTO_INCREMENT,
+    dateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    albumName varchar(255) NOT NULL,
+    albumTypeID int NOT NULL,
+    coverImageID int NOT NULL,
+    albumSortPosition int,
+    PRIMARY KEY (albumID),
+    FOREIGN KEY (albumTypeID) REFERENCES AlbumTypes(albumTypeID),
+    FOREIGN KEY (coverImageID) REFERENCES Images(imageID)
+);
+
+CREATE INDEX idx_albumID on Albums(albumID);
+CREATE INDEX idx_albumByType on Albums(albumTypeID);
+
+CREATE TABLE AlbumImages (
+    albumID int NOT NULL,
+    imageID int NOT NULL,
+    PRIMARY KEY (albumID, imageID),
+    FOREIGN KEY (albumID) REFERENCES Albums(albumID),
+    FOREIGN KEY (imageID) REFERENCES Images(imageID)
+);
+
+CREATE INDEX idx_albumImageID on AlbumImages(albumID);

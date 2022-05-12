@@ -1,0 +1,4 @@
+INSERT INTO Images (name, sourceURL, state, country, dateCaptured)
+VALUES ('witaph', 'https://lh3.googleusercontent.com/dAAMVeCrDy9cLmolhNGDMvCIJaqB6Lm9rHBmfW9Kifo8PCZ7EeG_EwJ9liROmrzJgkErioRB6SoQ5OULCPKD6Q6MW_2LtNpoUz4b-UZ9JthcvBDMJdCu44eyJJOiYORTd7Rv4p4KjA=w2400', 'CA', 'USA', '2019-09-01T00:00:00')
+
+SELECT * FROM Images
