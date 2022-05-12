@@ -19,7 +19,7 @@ db.connect(err => {
 
 const app = express()
 
-app.get('/getImages', (req, res) => {
+app.get('/images', (req, res) => {
 	let sql = 'SELECT * FROM Images'
 
 	db.query(sql, (err, results) => {
@@ -27,7 +27,7 @@ app.get('/getImages', (req, res) => {
 			throw err
 		}
 
-		console.log('/getImages results: ', results)
+		console.log('GET /images results: ', results)
 		res.send(results)
 	})
 })
