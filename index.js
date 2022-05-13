@@ -1,4 +1,5 @@
 const express = require('express')
+const cors = require('cors')
 const mysql = require('mysql2')
 const dotenv = require('dotenv').config()
 
@@ -19,6 +20,11 @@ db.connect(err => {
 })
 
 const app = express()
+const corsOptions = {
+	origin: 'http://localhost:8080',
+	optionsSuccessStatus: 200,
+}
+app.use(cors(corsOptions))
 
 app.get('/images', (req, res) => {
 	let sql = 'SELECT * FROM Images'
