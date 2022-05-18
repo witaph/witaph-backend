@@ -2,8 +2,26 @@ const express = require('express')
 const cors = require('cors')
 const mysql = require('mysql2')
 const dotenv = require('dotenv').config()
+const fs = require('fs')
+const moment = require('moment')
 
-const PORT = process.env.port || 8000
+const PORT = process.env.PORT
+
+let logStream = fs.createWriteStream('log.txt')
+let console = {}
+console.log = (str, obj) => {
+  var s = str
+  if (!!obj) {
+  	if (typeof obj === 'string')
+  		s += obj
+  	else
+    	s += JSON.stringify(obj)
+  }
+
+  var dS = '[' + moment().format() + '] '
+  s = `[${dS}] ${s}\n`
+  logStream.write(s)
+}
 
 const db = mysql.createConnection({
 	host: process.env.DB_HOST,
@@ -20,13 +38,16 @@ db.connect(err => {
 })
 
 const app = express()
-const corsOptions = {
-	origin: 'http://localhost:8080',
-	optionsSuccessStatus: 200,
-}
-app.use(cors(corsOptions))
+// const corsOptions = {
+// 	origin: process.env.CLIENT_ADDRESS,
+// 	optionsSuccessStatus: 200,
+// 	credentials: true,
+// }
+// app.use(cors(corsOptions))
+app.use(cors())
 
-app.get('/images', (req, res) => {
+app.get('/api/images', (req, res) => {
+	console.log('GET /images')
 	let sql = 'SELECT * FROM Images'
 
 	db.query(sql, (err, results) => {
