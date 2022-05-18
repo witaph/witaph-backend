@@ -4,8 +4,9 @@ const mysql = require('mysql2')
 const dotenv = require('dotenv').config()
 const fs = require('fs')
 const moment = require('moment')
+const bcrypt = require('bcryptjs')
 
-const PORT = process.env.PORT
+const PORT = process.env.PORT || 8000
 
 let logStream = fs.createWriteStream('log.txt')
 let console = {}
@@ -47,16 +48,33 @@ const app = express()
 app.use(cors())
 
 app.get('/api/images', (req, res) => {
-	console.log('GET /images')
-	let sql = 'SELECT * FROM Images'
+	console.log('GET /api/images')
+	const sql = 'SELECT * FROM Images'
 
 	db.query(sql, (err, results) => {
 		if (err) {
 			throw err
 		}
 
-		console.log('GET /images results: ', results)
+		console.log('GET /api/images results: ', results)
 		res.send(results)
+	})
+})
+
+app.post('/api/login', (req, res) => {
+	console.log('POST /api/login request.body: ', req.body)
+	if (!request.body.userName) {
+		return res.status(400).send({ message: 'must provide userName for login' })
+	}
+
+	const sql = `SELECT * FROM Users WHERE userName = ${req.body.userName}`
+
+	db.query(sql, (err, results) => {
+		if (err) {
+			throw err
+		}
+
+		console.log('results: ', results)
 	})
 })
 

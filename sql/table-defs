@@ -32,6 +32,15 @@ CREATE TABLE ImageTags (
 
 CREATE INDEX idx_imageTagID on ImageTags(tagID);
 
+CREATE TABLE Users (
+    dateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    userName varchar(20) NOT NULL,
+    password varchar(60) NOT NULL,
+    PRIMARY KEY (userName)
+);
+
+CREATE INDEX idx_userName on Users(userName);
+
 CREATE TABLE AlbumTypes (
     albumTypeID int NOT NULL AUTO_INCREMENT,
     dateCreated DATETIME NOT NULL DFAULT CURRENT_TIMESTAMP,
