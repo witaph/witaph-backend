@@ -7,6 +7,7 @@ const moment = require('moment')
 const bodyParser = require('body-parser')
 
 const controller = require('./controller')
+const middleware = require('./middleware')
 const PORT = process.env.PORT || 8000
 
 let logStream = fs.createWriteStream('log.txt')

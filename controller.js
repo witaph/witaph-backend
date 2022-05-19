@@ -53,7 +53,7 @@ exports.login = (req, res) => {
 	})
 }
 
-const addImage = (req, res) => {
+exports.addImage = (req, res) => {
 	console.log('POST /api/addImage req.body: ', req.body)
 	console.log('POST /api/addImage req.userName: ', req.userName)
 }
