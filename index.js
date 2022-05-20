@@ -9,21 +9,21 @@ const controller = require('./controller')
 const middleware = require('./middleware')
 const PORT = process.env.PORT || 8000
 
- let logStream = fs.createWriteStream('log.txt')
- let console = {}
- console.log = (str, obj) => {
-   var s = str
-   if (!!obj) {
-   	if (typeof obj === 'string')
-   		s += obj
-   	else
-     	s += JSON.stringify(obj)
-   }
- 
-   var dS = '[' + moment().format() + '] '
-   s = `[${dS}] ${s}\n`
-   logStream.write(s)
- }
+ // let logStream = fs.createWriteStream('log.txt')
+ // let console = {}
+ // console.log = (str, obj) => {
+ //   var s = str
+ //   if (!!obj) {
+ //   	if (typeof obj === 'string')
+ //   		s += obj
+ //   	else
+ //     	s += JSON.stringify(obj)
+ //   }
+ // 
+ //   var dS = '[' + moment().format() + '] '
+ //   s = `[${dS}] ${s}\n`
+ //   logStream.write(s)
+ // }
 
 controller.db.connect(err => {
 	if(err) {
@@ -52,14 +52,15 @@ app.use((req, res, next) => {
 	next()
 })
 
+app.post('/api/addImage', [middleware.verifyToken], controller.addImage)
 app.get('/api/images', controller.getImages)
 app.post('/api/login', controller.login)
+app.get('/api/tags', controller.getTags)
 app.get('/api/verifyLogin', [middleware.verifyToken], (req, res) => {
 	res.status(200).send({
 		message: 'success'
 	})
 })
-app.post('/api/addImage', [middleware.verifyToken], controller.addImage)
 
 app.listen(PORT, () => {
 	console.log(`Server started on port ${PORT}`)

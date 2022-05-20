@@ -9,6 +9,11 @@ const db = mysql.createConnection({
 	database: process.env.DB_DATABASE,
 })
 
+const addImage = (req, res) => {
+	console.log('POST /api/addImage req.body: ', req.body)
+	console.log('POST /api/addImage req.userName: ', req.userName)
+}
+
 const getImages = (req, res) => {
 	console.log('GET /api/images')
 	const sql = 'SELECT * FROM Images'
@@ -61,9 +66,20 @@ const login = (req, res) => {
 	})
 }
 
-const addImage = (req, res) => {
-	console.log('POST /api/addImage req.body: ', req.body)
-	console.log('POST /api/addImage req.userName: ', req.userName)
+const getTags = (req, res) => {
+	console.log('GET /api/tags')
+	const sql = 'SELECT * FROM Tags'
+
+	db.query(sql, (err, results) => {
+		if (err) {
+			throw err
+		}
+
+		console.log('GET /api/tags results: ', results)
+		res.send({
+			tags: JSON.stringify(results)
+		})
+	})
 }
 
 module.exports = {
@@ -71,4 +87,5 @@ module.exports = {
 	getImages,
 	login,
 	addImage,
+	getTags,
 }
