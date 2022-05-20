@@ -1,7 +1,15 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
+const mysql = require('mysql2')
 
-exports.getImages = (req, res) => {
+const db = mysql.createConnection({
+	host: process.env.DB_HOST,
+	user: process.env.DB_USER,
+	password: process.env.DB_PASSWORD,
+	database: process.env.DB_DATABASE,
+})
+
+const getImages = (req, res) => {
 	console.log('GET /api/images')
 	const sql = 'SELECT * FROM Images'
 
@@ -15,7 +23,7 @@ exports.getImages = (req, res) => {
 	})
 }
 
-exports.login = (req, res) => {
+const login = (req, res) => {
 	console.log('POST /api/login req.body: ', req.body)
 	// console.log('POST /api/login res: ', Object.getOwnPropertyNames(res))
 	if (!req.body.userName) {
@@ -53,7 +61,14 @@ exports.login = (req, res) => {
 	})
 }
 
-exports.addImage = (req, res) => {
+const addImage = (req, res) => {
 	console.log('POST /api/addImage req.body: ', req.body)
 	console.log('POST /api/addImage req.userName: ', req.userName)
+}
+
+module.exports = {
+	db,
+	getImages,
+	login,
+	addImage,
 }

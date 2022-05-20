@@ -1,6 +1,5 @@
 const express = require('express')
 const cors = require('cors')
-const mysql = require('mysql2')
 const dotenv = require('dotenv').config()
 const fs = require('fs')
 const moment = require('moment')
@@ -10,30 +9,23 @@ const controller = require('./controller')
 const middleware = require('./middleware')
 const PORT = process.env.PORT || 8000
 
-let logStream = fs.createWriteStream('log.txt')
-let console = {}
-console.log = (str, obj) => {
-  var s = str
-  if (!!obj) {
-  	if (typeof obj === 'string')
-  		s += obj
-  	else
-    	s += JSON.stringify(obj)
-  }
+ let logStream = fs.createWriteStream('log.txt')
+ let console = {}
+ console.log = (str, obj) => {
+   var s = str
+   if (!!obj) {
+   	if (typeof obj === 'string')
+   		s += obj
+   	else
+     	s += JSON.stringify(obj)
+   }
+ 
+   var dS = '[' + moment().format() + '] '
+   s = `[${dS}] ${s}\n`
+   logStream.write(s)
+ }
 
-  var dS = '[' + moment().format() + '] '
-  s = `[${dS}] ${s}\n`
-  logStream.write(s)
-}
-
-const db = mysql.createConnection({
-	host: process.env.DB_HOST,
-	user: process.env.DB_USER,
-	password: process.env.DB_PASSWORD,
-	database: process.env.DB_DATABASE,
-})
-
-db.connect(err => {
+controller.db.connect(err => {
 	if(err) {
 		throw err
 	}
