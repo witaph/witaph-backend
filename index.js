@@ -54,6 +54,11 @@ app.use((req, res, next) => {
 
 app.get('/api/images', controller.getImages)
 app.post('/api/login', controller.login)
+app.get('/api/verifyLogin', [middleware.verifyToken], (req, res) => {
+	res.status(200).send({
+		message: 'success'
+	})
+})
 app.post('/api/addImage', [middleware.verifyToken], controller.addImage)
 
 app.listen(PORT, () => {
