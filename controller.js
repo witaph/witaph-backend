@@ -13,6 +13,8 @@ const db = mysql.createConnection({
 
 const query = util.promisify(db.query).bind(db)
 
+const stringOrNull = value => value ? `'${value}'` : null
+
 const addImage = async (req, res) => {
 	console.log('POST /api/addImage req.body: ', req.body)
 
@@ -39,7 +41,7 @@ const addImage = async (req, res) => {
 	}
 
 	const imageInsert = 'INSERT INTO Images (name, sourceURL, sourceURL2, state, country, dateCaptured)'
-		+ `VALUES ('${imageValues.name}', '${imageValues.sourceURL}', '${imageValues.sourceURL2}', '${imageValues.state}', '${imageValues.country}', '${imageValues.dateCaptured}')`
+		+ `VALUES (${stringOrNull(imageValues.name)}, ${stringOrNull(imageValues.sourceURL)}, ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, ${stringOrNull(imageValues.dateCaptured)})`
 
 	console.log('imageInsert: ', imageInsert)
 	
@@ -96,16 +98,24 @@ const getImage = async (req, res) => {
 	console.log(`GET /api/images/${req.params.imageID}`)
 
 	const imageSelect = `SELECT * FROM Images WHERE imageID = ${req.params.imageID}`
-	const image = await query(imageSelect)
+	const images = await query(imageSelect)
+	if (!images || !images.length) {
+		res.status(404).send({ message: 'image not found' })
+	}
+	const image = images[0]
 
 	const tagSelect = `SELECT * FROM ImageTags INNER JOIN Tags on ImageTags.TagID = Tags.TagID WHERE ImageTags.imageID = ${req.params.imageID}`
-	const tags = await query(imageTagSelect)
+	const tags = await query(tagSelect)
 
 	console.log('image: ', image)
 	console.log('tags: ', tags)
 
 	res.send({
-		message: 'success'
+		...image,
+		tags: tags.map(tag => ({
+			id: tag.tagID,
+			name: tag.tagText,
+		}))
 	})
 }
 
