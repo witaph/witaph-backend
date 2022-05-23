@@ -57,6 +57,7 @@ app.get('/api/images', controller.getImages)
 app.get('/api/images/:imageID', controller.getImage)
 app.post('/api/login', controller.login)
 app.get('/api/tags', controller.getTags)
+app.get('/api/updateImage', [middleware.verifyToken], controller.updateImage)
 app.get('/api/verifyLogin', [middleware.verifyToken], (req, res) => {
 	res.status(200).send({
 		message: 'success'

@@ -41,7 +41,7 @@ const addImage = async (req, res) => {
 	}
 
 	const imageInsert = 'INSERT INTO Images (name, sourceURL, sourceURL2, state, country, dateCaptured)'
-		+ `VALUES (${stringOrNull(imageValues.name)}, ${stringOrNull(imageValues.sourceURL)}, ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, ${stringOrNull(imageValues.dateCaptured)})`
+		+ `VALUES (${stringOrNull(imageValues.name)}, ${imageValues.sourceURL}, ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, ${imageValues.dateCaptured})`
 
 	console.log('imageInsert: ', imageInsert)
 	
@@ -170,6 +170,69 @@ const getTags = async (req, res) => {
 	res.send(tags)
 }
 
+const updateImage = async (req, res) => {
+	console.log('POST /api/updateImage, req.body: ', req.body)
+
+	if (!req.body.imageID) {
+		return res.status(400).send({ message: 'must provide imageID '})
+	}
+
+	if (!req.body.sourceURL || !req.body.sourceURL.length) {
+		return res.status(400).send({ message: 'must provide sourceURL' })
+	}
+
+	if (!req.body.dateCaptured || !req.body.dateCaptured.length) {
+		return res.status(400).send({ message: 'must provide dateCaptured (YYYY-MM-DD)' })
+	}
+
+	const dateCapturedMoment = moment(req.body.dateCaptured, 'YYYY-MM-DD')
+	if (!dateCapturedMoment.isValid()) {
+		return res.status(401).send({ message: 'dateCaptured must be in YYYY-MM-DD format' })
+	}
+
+	const existingImage = await query(`SELECT * FROM Images WHERE imageID = ${req.body.imageID}`)
+	if (!existingImage.length) {
+		return res.status(404),send({ message: 'no image with that id found' })
+	}
+
+	const imageValues = {
+		imageID: req.body.imageID,
+		name: (req.body.name && req.body.name.length) ? req.body.name : null,
+		sourceURL: req.body.sourceURL,
+		sourceURL2: (req.body.sourceURL2 && req.body.sourceURL2.length) ? req.body.sourceURL2 : null,
+		state: (req.body.captureState && req.body.captureState.length) ? req.body.captureState : null,
+		country: (req.body.captureCountry && req.body.captureCountry.length) ? req.body.captureCountry : null,
+		dateCaptured: dateCapturedMoment.format('YYYY-MM-DD'),
+	}
+
+	const imageUpdate = 'UPDATE Images SET '
+		+ `name=${stringOrNull(imageValues.name)}, sourceURL=${imageValues.sourceURL}, sourceURL2=${stringOrNull(imageValues.sourceURL2)}, state=${stringOrNull(imageValues.state)}, country=${stringOrNull(imageValues.country)}, dateCaptured=${imageValues.dateCaptured}`
+		+ `WHERE imageID=${imageValues.imageID}`
+
+	console.log('imageUpdate: ', imageUpdate)
+	
+	const imageUpdateResult = await query(imageUpdate)
+	console.log('imageUpdateResult: ', imageUpdateResult)
+
+	// add new tags
+	const imageTagRecords = await addTags(imageValues.imageID, req.body.tags)
+	console.log('imageTagRecords: ', imageTagRecords)
+
+	const requestTagIds = req.body.tags.map(tag => tag.id)
+	console.log('requestTagIds: ', requestTagIds)
+
+	// execute any tag removals
+	await Promise.all(imageTagRecords.map(async imageTag => {
+		if(!requestTagIds.includes(imageTag.tagID)) {
+			console.log(`deleting ImageTags with imageID: ${imageTag.imageID}, tagID: ${imageTag.tagID}`)
+			const imageTagDeleteResult = await query(`DELETE FROM ImageTags WHERE imageID = ${imageTag.imageID} AND tagID = ${imageTag.tagID}`)
+			console.log('imageTagDeleteResult: ', imageTagDeleteResult)
+		}
+	}))
+
+	res.status(200).send({ message: 'success' })
+}
+
 module.exports = {
 	db,
 	getImage,
@@ -177,4 +240,5 @@ module.exports = {
 	login,
 	addImage,
 	getTags,
+	updateImage,
 }
