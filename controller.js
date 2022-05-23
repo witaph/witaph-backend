@@ -21,7 +21,7 @@ const addImage = async (req, res) => {
 	}
 
 	if (!req.body.dateCaptured || !req.body.dateCaptured.length) {
-		return res.status(400).send({ message: 'must provide dateCaptured (YYYY-MM-DD}' })
+		return res.status(400).send({ message: 'must provide dateCaptured (YYYY-MM-DD)' })
 	}
 
 	const dateCapturedMoment = moment(req.body.dateCaptured, 'YYYY-MM-DD')
@@ -92,6 +92,23 @@ const addTags = async (imageID, tags) => {
 	return imageTags
 }
 
+const getImage = async (req, res) => {
+	console.log(`GET /api/images/${req.params.imageID}`)
+
+	const imageSelect = `SELECT * FROM Images WHERE imageID = ${req.params.imageID}`
+	const image = await query(imageSelect)
+
+	const tagSelect = `SELECT * FROM ImageTags INNER JOIN Tags on ImageTags.TagID = Tags.TagID WHERE ImageTags.imageID = ${req.params.imageID}`
+	const tags = await query(imageTagSelect)
+
+	console.log('image: ', image)
+	console.log('tags: ', tags)
+
+	res.send({
+		message: 'success'
+	})
+}
+
 const getImages = async (req, res) => {
 	console.log('GET /api/images')
 	const imageSelect = 'SELECT * FROM Images'
@@ -145,6 +162,7 @@ const getTags = async (req, res) => {
 
 module.exports = {
 	db,
+	getImage,
 	getImages,
 	login,
 	addImage,

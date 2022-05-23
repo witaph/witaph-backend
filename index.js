@@ -54,6 +54,7 @@ app.use((req, res, next) => {
 
 app.post('/api/addImage', [middleware.verifyToken], controller.addImage)
 app.get('/api/images', controller.getImages)
+app.get('/api/images/:imageID', controller.getImage)
 app.post('/api/login', controller.login)
 app.get('/api/tags', controller.getTags)
 app.get('/api/verifyLogin', [middleware.verifyToken], (req, res) => {
