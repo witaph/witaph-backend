@@ -41,7 +41,7 @@ const addImage = async (req, res) => {
 	}
 
 	const imageInsert = 'INSERT INTO Images (name, sourceURL, sourceURL2, state, country, dateCaptured)'
-		+ `VALUES (${stringOrNull(imageValues.name)}, ${imageValues.sourceURL}, ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, ${imageValues.dateCaptured})`
+		+ `VALUES (${stringOrNull(imageValues.name)}, '${imageValues.sourceURL}', ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, '${imageValues.dateCaptured}')`
 
 	console.log('imageInsert: ', imageInsert)
 	
@@ -87,6 +87,7 @@ const addTags = async (imageID, tags) => {
 			imageTags.push({
 				imageID,
 				tagID: tag.id,
+				newlyInserted: true,
 			})
 		}
 	}))
@@ -206,7 +207,7 @@ const updateImage = async (req, res) => {
 	}
 
 	const imageUpdate = 'UPDATE Images SET '
-		+ `name=${stringOrNull(imageValues.name)}, sourceURL=${imageValues.sourceURL}, sourceURL2=${stringOrNull(imageValues.sourceURL2)}, state=${stringOrNull(imageValues.state)}, country=${stringOrNull(imageValues.country)}, dateCaptured=${imageValues.dateCaptured}`
+		+ `name=${stringOrNull(imageValues.name)}, sourceURL='${imageValues.sourceURL}', sourceURL2=${stringOrNull(imageValues.sourceURL2)}, state=${stringOrNull(imageValues.state)}, country=${stringOrNull(imageValues.country)}, dateCaptured='${imageValues.dateCaptured}'`
 		+ `WHERE imageID=${imageValues.imageID}`
 
 	console.log('imageUpdate: ', imageUpdate)
@@ -218,19 +219,23 @@ const updateImage = async (req, res) => {
 	const imageTagRecords = await addTags(imageValues.imageID, req.body.tags)
 	console.log('imageTagRecords: ', imageTagRecords)
 
-	const requestTagIds = req.body.tags.map(tag => tag.id)
+	const requestTagIds = []
+	req.body.tags.map(tag => !!tag.id && requestTagIds.push(tag.id))
 	console.log('requestTagIds: ', requestTagIds)
 
-	// execute any tag removals
+	// remove any tags not included in request
 	await Promise.all(imageTagRecords.map(async imageTag => {
-		if(!requestTagIds.includes(imageTag.tagID)) {
+		if(!requestTagIds.includes(imageTag.tagID) && !imageTag.newlyInserted) {
 			console.log(`deleting ImageTags with imageID: ${imageTag.imageID}, tagID: ${imageTag.tagID}`)
 			const imageTagDeleteResult = await query(`DELETE FROM ImageTags WHERE imageID = ${imageTag.imageID} AND tagID = ${imageTag.tagID}`)
 			console.log('imageTagDeleteResult: ', imageTagDeleteResult)
 		}
 	}))
 
-	res.status(200).send({ message: 'success' })
+	const allTags = await query('SELECT * FROM Tags')
+	console.log('allTags: ', allTags)
+
+	res.send(allTags)
 }
 
 module.exports = {
