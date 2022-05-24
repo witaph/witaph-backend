@@ -122,7 +122,7 @@ const getImage = async (req, res) => {
 
 const getImages = async (req, res) => {
 	console.log('GET /api/images')
-	const imageSelect = 'SELECT * FROM Images'
+	const imageSelect = 'SELECT * FROM Images ORDER BY dateCaptured DESC, imageID DESC'
 
 	const images = await query(imageSelect)
 	console.log('GET /api/images results: ', images)
