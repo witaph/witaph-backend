@@ -13,7 +13,7 @@ const db = mysql.createConnection({
 
 const query = util.promisify(db.query).bind(db)
 
-const stringOrNull = value => value ? `'${value}'` : null
+const stringOrNull = value => value ? mysql.escape(value) : null
 
 const addImage = async (req, res) => {
 	console.log('POST /api/addImage req.body: ', req.body)
@@ -41,7 +41,7 @@ const addImage = async (req, res) => {
 	}
 
 	const imageInsert = 'INSERT INTO Images (name, sourceURL, sourceURL2, state, country, dateCaptured)'
-		+ `VALUES (${stringOrNull(imageValues.name)}, '${imageValues.sourceURL}', ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, '${imageValues.dateCaptured}')`
+		+ `VALUES (${stringOrNull(imageValues.name)}, ${mysql.escape(imageValues.sourceURL)}, ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, ${mysql.escape(imageValues.dateCaptured)})`
 
 	console.log('imageInsert: ', imageInsert)
 	
@@ -61,7 +61,7 @@ const addTags = async (imageID, tags) => {
 	// insert new tags
 	const tagsWithIds = await Promise.all(tags.map(async tag => {
 		if (!tag.id) {
-			const tagInsert = `INSERT INTO Tags (tagText) VALUES ('${tag.name}')`
+			const tagInsert = `INSERT INTO Tags (tagText) VALUES (${mysql.escape(tag.name)})`
 			console.log('tag insert: ', tagInsert)
 			const tagInsertResult = await query(tagInsert)
 			return {
@@ -121,11 +121,77 @@ const getImage = async (req, res) => {
 }
 
 const getImages = async (req, res) => {
-	console.log('GET /api/images')
-	const imageSelect = 'SELECT * FROM Images ORDER BY dateCaptured DESC, imageID DESC'
+	console.log('POST /api/images, req.body: ', req.body)
+	let imageSelect = 'SELECT * FROM Images'
+
+	let hasWhere = false
+
+	if (req.body.tags && req.body.tags.length) {
+		let imageTagSelect = 'SELECT '
+		if (req.body.whichTags == 'any') {
+			imageTagSelect += `DISTINCT imageID FROM ImageTags WHERE tagID IN (${req.body.tags[0].id}`
+			for (let i = 1; i < req.body.tags.length; i++) {
+				imageTagSelect += `,${req.body.tags[i].id}`
+			}
+			imageTagSelect += ')'
+		} else { // only return images with all tags
+			imageTagSelect += `imageID FROM ImageTags WHERE tagID IN (${req.body.tags[0].id}`
+			for (let i = 1; i < req.body.tags.length; i++) {
+				imageTagSelect += `,${req.body.tags[i].id}`
+			}
+			imageTagSelect += `) GROUP BY imageID HAVING COUNT(*) = ${req.body.tags.length}`
+		}
+		console.log('imageTagSelect: ', imageTagSelect)
+
+		const imagesTagged = await query(imageTagSelect)
+		console.log('imagesTagged: ', imagesTagged)
+
+		hasWhere = true
+		imageSelect += ` WHERE imageID in (${imagesTagged[0].imageID}`
+		for (let i = 1; i < imagesTagged.length; i++) {
+			imageSelect += `,${imagesTagged[i].imageID}`
+		}
+		imageSelect += ')'
+	}
+
+	if (req.body.capturedAfter && req.body.capturedAfter.length) {
+		if (hasWhere) {
+			imageSelect += ' AND '
+		} else {
+			imageSelect += ' WHERE '
+			hasWhere = true
+		}
+
+		imageSelect += `dateCaptured >= ${mysql.escape(req.body.capturedAfter)}`
+	}
+
+	if (req.body.capturedBefore && req.body.capturedBefore.length) {
+		if (hasWhere) {
+			imageSelect += ' AND '
+		} else {
+			imageSelect += ' WHERE '
+			hasWhere = true
+		}
+
+		imageSelect += `dateCaptured <= ${mysql.escape(req.body.capturedBefore)}`
+	}
+
+	if (req.body.captureState && req.body.captureState.length) {
+		if (hasWhere) {
+			imageSelect += ' AND '
+		} else {
+			imageSelect += ' WHERE '
+			hasWhere = true
+		}
+
+		imageSelect += `state = ${mysql.escape(req.body.captureState)}`
+	}
+
+	imageSelect += ' ORDER BY dateCaptured DESC, imageID DESC'
+	console.log('imageSelect: ', imageSelect)
 
 	const images = await query(imageSelect)
-	console.log('GET /api/images results: ', images)
+	console.log('POST /api/images results: ', images)
 	res.send(images)
 }
 
