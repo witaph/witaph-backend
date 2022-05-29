@@ -9,38 +9,25 @@ const controller = require('./controller')
 const middleware = require('./middleware')
 const PORT = process.env.PORT || 8000
 
- // let logStream = fs.createWriteStream('log.txt')
- // let console = {}
- // console.log = (str, obj) => {
- //   var s = str
- //   if (!!obj) {
- //   	if (typeof obj === 'string')
- //   		s += obj
- //   	else
- //     	s += JSON.stringify(obj)
- //   }
- // 
- //   var dS = '[' + moment().format() + '] '
- //   s = `[${dS}] ${s}\n`
- //   logStream.write(s)
- // }
-
-controller.db.connect(err => {
-	if(err) {
-		throw err
-	}
-	console.log('MySQL connected')
-})
+   let logStream = fs.createWriteStream('log.txt')
+   let console = {}
+   console.log = (str, obj) => {
+     var s = str
+     if (!!obj) {
+     	if (typeof obj === 'string')
+     		s += obj
+     	else
+       	s += JSON.stringify(obj)
+     }
+   
+     var dS = '[' + moment().format() + '] '
+     s = `[${dS}] ${s}\n`
+     logStream.write(s)
+   }
 
 const app = express()
-// const corsOptions = {
-// 	origin: process.env.CLIENT_ADDRESS,
-// 	optionsSuccessStatus: 200,
-// 	credentials: true,
-// }
-// app.use(cors(corsOptions))
-app.use(cors())
 
+app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 

@@ -4,7 +4,8 @@ const mysql = require('mysql2')
 const moment = require('moment')
 const util = require('util')
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
+	connectionLimit: 10,
 	host: process.env.DB_HOST,
 	user: process.env.DB_USER,
 	password: process.env.DB_PASSWORD,
@@ -12,8 +13,6 @@ const db = mysql.createConnection({
 })
 
 const query = util.promisify(db.query).bind(db)
-
-const stringOrNull = value => value ? mysql.escape(value) : null
 
 const addImage = async (req, res) => {
 	console.log('POST /api/addImage req.body: ', req.body)
@@ -40,12 +39,13 @@ const addImage = async (req, res) => {
 		dateCaptured: dateCapturedMoment.format('YYYY-MM-DD'),
 	}
 
-	const imageInsert = 'INSERT INTO Images (name, sourceURL, sourceURL2, state, country, dateCaptured)'
-		+ `VALUES (${stringOrNull(imageValues.name)}, ${mysql.escape(imageValues.sourceURL)}, ${stringOrNull(imageValues.sourceURL2)}, ${stringOrNull(imageValues.state)}, ${stringOrNull(imageValues.country)}, ${mysql.escape(imageValues.dateCaptured)})`
+	const imageInsert = 'INSERT INTO Images (name, sourceURL, sourceURL2, state, country, dateCaptured) '
+		+ 'VALUES (?, ?, ?, ?, ?, ?)'
+	const imageInsertParams = [imageValues.name, imageValues.sourceURL, imageValues.sourceURL2, imageValues.state, imageValues.country, imageValues.dateCaptured]
 
-	console.log('imageInsert: ', imageInsert)
+	console.log('imageInsertParams: ', imageInsertParams)
 	
-	const imageInsertResult = await query(imageInsert)
+	const imageInsertResult = await query(imageInsert, imageInsertParams)
 	console.log('imageInsertResult: ', imageInsertResult)
 
 	const imageTagRecords = await addTags(imageInsertResult.insertId, req.body.tags)
@@ -61,9 +61,10 @@ const addTags = async (imageID, tags) => {
 	// insert new tags
 	const tagsWithIds = await Promise.all(tags.map(async tag => {
 		if (!tag.id) {
-			const tagInsert = `INSERT INTO Tags (tagText) VALUES (${mysql.escape(tag.name)})`
-			console.log('tag insert: ', tagInsert)
-			const tagInsertResult = await query(tagInsert)
+			const tagInsert = 'INSERT INTO Tags (tagText) VALUES (?)'
+			const tagInsertParams = [tag.name]
+			console.log('tag insert params: ', tagInsertParams)
+			const tagInsertResult = await query(tagInsert, tagInsertParams)
 			return {
 				id: tagInsertResult.insertId,
 				name: tag.name,
@@ -74,16 +75,19 @@ const addTags = async (imageID, tags) => {
 	}))
 	console.log('tagsWithIds: ', tagsWithIds)
 
-	const imageTags = await query(`SELECT * FROM ImageTags WHERE imageID = ${imageID}`)
+	const imageTagsSelect = 'SELECT * FROM ImageTags WHERE imageID = ?'
+	const imageTagsParams = [imageID]
+	const imageTags = await query(imageTagsSelect, imageTagsParams)
 	const existingImageTagIds = imageTags.map(tag => tag.tagID)
 
 	// create ImageTags records for any tags not already applied to the image
 	await Promise.all(tagsWithIds.map(async tag => {
 		console.log('tag: ', tag)
 		if (!existingImageTagIds.includes(tag.id)) {
-			const imageTagInsert = `INSERT INTO ImageTags (imageID, tagID) VALUES (${imageID}, ${tag.id})`
+			const imageTagInsert = 'INSERT INTO ImageTags (imageID, tagID) VALUES (?, ?)'
+			const imageTagInsertParams = [imageID, tag.id]
 			console.log('imageTagInsert: ', imageTagInsert)
-			const imageTagInsertResult = await query(imageTagInsert)
+			const imageTagInsertResult = await query(imageTagInsert, imageTagInsertParams)
 			imageTags.push({
 				imageID,
 				tagID: tag.id,
@@ -98,15 +102,16 @@ const addTags = async (imageID, tags) => {
 const getImage = async (req, res) => {
 	console.log(`GET /api/images/${req.params.imageID}`)
 
-	const imageSelect = `SELECT * FROM Images WHERE imageID = ${req.params.imageID}`
-	const images = await query(imageSelect)
+	const imageSelect = 'SELECT * FROM Images WHERE imageID = ?'
+	const imageSelectParams = [req.params.imageID]
+	const images = await query(imageSelect, imageSelectParams)
 	if (!images || !images.length) {
 		res.status(404).send({ message: 'image not found' })
 	}
 	const image = images[0]
 
-	const tagSelect = `SELECT * FROM ImageTags INNER JOIN Tags on ImageTags.TagID = Tags.TagID WHERE ImageTags.imageID = ${req.params.imageID}`
-	const tags = await query(tagSelect)
+	const tagSelect = 'SELECT * FROM ImageTags INNER JOIN Tags on ImageTags.TagID = Tags.TagID WHERE ImageTags.imageID = ?'
+	const tags = await query(tagSelect, imageSelectParams)
 
 	console.log('image: ', image)
 	console.log('tags: ', tags)
@@ -123,33 +128,43 @@ const getImage = async (req, res) => {
 const getImages = async (req, res) => {
 	console.log('POST /api/images, req.body: ', req.body)
 	let imageSelect = 'SELECT * FROM Images'
+	const imageSelectParams = []
 
 	let hasWhere = false
 
 	if (req.body.tags && req.body.tags.length) {
 		let imageTagSelect = 'SELECT '
+		const imageTagSelectParams = []
 		if (req.body.whichTags == 'any') {
-			imageTagSelect += `DISTINCT imageID FROM ImageTags WHERE tagID IN (${req.body.tags[0].id}`
+			imageTagSelect += 'DISTINCT imageID FROM ImageTags WHERE tagID IN (?'
+			imageTagSelectParams.push(req.body.tags[0].id)
 			for (let i = 1; i < req.body.tags.length; i++) {
-				imageTagSelect += `,${req.body.tags[i].id}`
+				imageTagSelect += ',?'
+				imageTagSelectParams.push(req.body.tags[i].id)
 			}
 			imageTagSelect += ')'
 		} else { // only return images with all tags
-			imageTagSelect += `imageID FROM ImageTags WHERE tagID IN (${req.body.tags[0].id}`
+			imageTagSelect += 'imageID FROM ImageTags WHERE tagID IN (?'
+			imageTagSelectParams.push(req.body.tags[0].id)
 			for (let i = 1; i < req.body.tags.length; i++) {
-				imageTagSelect += `,${req.body.tags[i].id}`
+				imageTagSelect += ',?'
+				imageTagSelectParams.push(req.body.tags[i].id)
 			}
-			imageTagSelect += `) GROUP BY imageID HAVING COUNT(*) = ${req.body.tags.length}`
+			imageTagSelect += ') GROUP BY imageID HAVING COUNT(*) = ?'
+			imageTagSelectParams.push(req.body.tags.length)
 		}
 		console.log('imageTagSelect: ', imageTagSelect)
+		console.log('imageTagSelectParams: ', imageTagSelectParams)
 
-		const imagesTagged = await query(imageTagSelect)
+		const imagesTagged = await query(imageTagSelect, imageTagSelectParams)
 		console.log('imagesTagged: ', imagesTagged)
 
 		hasWhere = true
-		imageSelect += ` WHERE imageID in (${imagesTagged[0].imageID}`
+		imageSelect += ' WHERE imageID in (?'
+		imageSelectParams.push(imagesTagged[0].imageID)
 		for (let i = 1; i < imagesTagged.length; i++) {
-			imageSelect += `,${imagesTagged[i].imageID}`
+			imageSelect += ',?'
+			imageSelectParams.push(imagesTagged[i].imageID)
 		}
 		imageSelect += ')'
 	}
@@ -162,7 +177,8 @@ const getImages = async (req, res) => {
 			hasWhere = true
 		}
 
-		imageSelect += `dateCaptured >= ${mysql.escape(req.body.capturedAfter)}`
+		imageSelect += 'dateCaptured >= ?'
+		imageSelectParams.push(req.body.capturedAfter)
 	}
 
 	if (req.body.capturedBefore && req.body.capturedBefore.length) {
@@ -173,7 +189,8 @@ const getImages = async (req, res) => {
 			hasWhere = true
 		}
 
-		imageSelect += `dateCaptured <= ${mysql.escape(req.body.capturedBefore)}`
+		imageSelect += 'dateCaptured <= ?'
+		imageSelectParams.push(req.body.capturedBefore)
 	}
 
 	if (req.body.captureState && req.body.captureState.length) {
@@ -184,27 +201,30 @@ const getImages = async (req, res) => {
 			hasWhere = true
 		}
 
-		imageSelect += `state = ${mysql.escape(req.body.captureState)}`
+		imageSelect += 'state = ?'
+		imageSelectParams.push(req.body.captureState)
 	}
 
 	imageSelect += ' ORDER BY dateCaptured DESC, imageID DESC'
 	console.log('imageSelect: ', imageSelect)
+	console.log('imageSelectParams: ', imageSelectParams)
 
-	const images = await query(imageSelect)
+	const images = await query(imageSelect, imageSelectParams)
 	console.log('POST /api/images results: ', images)
 	res.send(images)
 }
 
 const login = async (req, res) => {
 	console.log('POST /api/login req.body: ', req.body)
-	// console.log('POST /api/login res: ', Object.getOwnPropertyNames(res))
+	
 	if (!req.body.userName) {
 		return res.status(400).send({ message: 'must provide userName for login' })
 	}
 
-	const userSelect = `SELECT * FROM Users WHERE userName = '${req.body.userName}'`
+	const userSelect = 'SELECT * FROM Users WHERE userName = ?'
+	const userSelectParams = [req.body.userName]
 
-	const users = await query(userSelect)
+	const users = await query(userSelect, userSelectParams)
 	console.log('POST /api/login Users select results: ', users)
 
 	if (!users || !users.length) {
@@ -257,7 +277,9 @@ const updateImage = async (req, res) => {
 		return res.status(401).send({ message: 'dateCaptured must be in YYYY-MM-DD format' })
 	}
 
-	const existingImage = await query(`SELECT * FROM Images WHERE imageID = ${req.body.imageID}`)
+	const existingImageSelect = 'SELECT * FROM Images WHERE imageID = ?'
+	const imageSelectParams = [req.body.imageID]
+	const existingImage = await query(existingImageSelect, imageSelectParams)
 	if (!existingImage.length) {
 		return res.status(404),send({ message: 'no image with that id found' })
 	}
@@ -273,12 +295,13 @@ const updateImage = async (req, res) => {
 	}
 
 	const imageUpdate = 'UPDATE Images SET '
-		+ `name=${stringOrNull(imageValues.name)}, sourceURL='${imageValues.sourceURL}', sourceURL2=${stringOrNull(imageValues.sourceURL2)}, state=${stringOrNull(imageValues.state)}, country=${stringOrNull(imageValues.country)}, dateCaptured='${imageValues.dateCaptured}'`
-		+ `WHERE imageID=${imageValues.imageID}`
+		+ 'name=?, sourceURL=?, sourceURL2=?, state=?, country=?, dateCaptured=?'
+		+ 'WHERE imageID=?'
+	const imageUpdateParams = [imageValues.name, imageValues.sourceURL, imageValues.sourceURL2, imageValues.state, imageValues.country, imageValues.dateCaptured, imageValues.imageID]
 
-	console.log('imageUpdate: ', imageUpdate)
+	console.log('imageUpdateParams: ', imageUpdateParams)
 	
-	const imageUpdateResult = await query(imageUpdate)
+	const imageUpdateResult = await query(imageUpdate, imageUpdateParams)
 	console.log('imageUpdateResult: ', imageUpdateResult)
 
 	// add new tags
@@ -293,7 +316,9 @@ const updateImage = async (req, res) => {
 	await Promise.all(imageTagRecords.map(async imageTag => {
 		if(!requestTagIds.includes(imageTag.tagID) && !imageTag.newlyInserted) {
 			console.log(`deleting ImageTags with imageID: ${imageTag.imageID}, tagID: ${imageTag.tagID}`)
-			const imageTagDeleteResult = await query(`DELETE FROM ImageTags WHERE imageID = ${imageTag.imageID} AND tagID = ${imageTag.tagID}`)
+			const imageTagDelete = 'DELETE FROM ImageTags WHERE imageID = ? AND tagID = ?'
+			const imageTagDeleteParams = [imageTag.imageID, imageTag.tagID]
+			const imageTagDeleteResult = await query(imageTagDelete, imageTagDeleteParams)
 			console.log('imageTagDeleteResult: ', imageTagDeleteResult)
 		}
 	}))
