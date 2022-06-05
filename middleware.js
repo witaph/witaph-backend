@@ -4,14 +4,14 @@ const verifyToken = (req, res, next) => {
 	console.log('verifyToken, req.headers: ', req.headers)
 	const token = req.headers['x-access-token']
 	if (!token) {
-		return res.status(403).send({
+		return res.status(200).send({
 			message: 'no access token provided'
 		})
 	}
 
 	jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
 		if (err) {
-			return res.status(401).send({
+			return res.status(200).send({
 				message: 'unauthorized'
 			})
 		}

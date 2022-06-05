@@ -47,7 +47,7 @@ app.get('/api/tags', controller.getTags)
 app.post('/api/updateImage', [middleware.verifyToken], controller.updateImage)
 app.get('/api/verifyLogin', [middleware.verifyToken], (req, res) => {
 	res.status(200).send({
-		message: 'success'
+		success: true
 	})
 })
 
