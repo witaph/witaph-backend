@@ -127,7 +127,7 @@ const getImage = async (req, res) => {
 
 const getImages = async (req, res) => {
 	console.log('POST /api/images, req.body: ', req.body)
-	let imageSelect = 'SELECT * FROM Images'
+	let imageSelect = 'SELECT * FROM Images INNER JOIN ImageTags ON Images.imageID = ImageTags.imageID INNER JOIN Tags ON ImageTags.tagID = Tags.tagID'
 	const imageSelectParams = []
 
 	let hasWhere = false
@@ -160,7 +160,7 @@ const getImages = async (req, res) => {
 		console.log('imagesTagged: ', imagesTagged)
 
 		hasWhere = true
-		imageSelect += ' WHERE imageID in (?'
+		imageSelect += ' WHERE Images.imageID in (?'
 		imageSelectParams.push(imagesTagged[0].imageID)
 		for (let i = 1; i < imagesTagged.length; i++) {
 			imageSelect += ',?'
@@ -205,13 +205,46 @@ const getImages = async (req, res) => {
 		imageSelectParams.push(req.body.captureState)
 	}
 
-	imageSelect += ' ORDER BY dateCaptured DESC, imageID DESC'
+	imageSelect += ' ORDER BY dateCaptured DESC, Images.imageID DESC'
 	console.log('imageSelect: ', imageSelect)
 	console.log('imageSelectParams: ', imageSelectParams)
 
-	const images = await query(imageSelect, imageSelectParams)
+	const imagesRaw = await query(imageSelect, imageSelectParams)
+	console.log('images query results: ', imagesRaw)
+	const images = convertImageTags(imagesRaw)
 	console.log('POST /api/images results: ', images)
 	res.send(images)
+}
+
+// take result of joining images with tags and convert to one row per image with
+// tags for each image as an array property
+const convertImageTags = rows => {
+	let lastImageID;
+	const convertedRows = []
+	for (let i = 0; i < rows.length; i++) {
+		const row = rows[i]
+		if (row.imageID !== lastImageID) {
+			lastImageID = row.imageID
+			const convertedRow = {
+				imageID: row.imageID,
+				dateCreated: row.dateCreated,
+				name: row.name,
+				sourceURL: row.sourceURL,
+				sourceURL2: row.sourceURL2,
+				state: row.state,
+				country: row.country,
+				dateCaptured: row.dateCaptured,
+				tags: []
+			}
+			if (row.tagText) {
+				convertedRow.tags.push(row.tagText)
+			}
+			convertedRows.push(convertedRow)
+		} else {
+			convertedRows[convertedRows.length - 1].tags.push(row.tagText)
+		}
+	}
+	return convertedRows
 }
 
 const login = async (req, res) => {
