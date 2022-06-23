@@ -250,8 +250,10 @@ const convertImageTags = rows => {
 const login = async (req, res) => {
 	console.log('POST /api/login req.body: ', req.body)
 	
+	const invalidLogin = { message: 'invalid login' }
 	if (!req.body.userName) {
-		return res.status(400).send({ message: 'must provide userName for login' })
+		console.log('POST /api/login error - no userName')
+		return res.status(200).send(invalidLogin)
 	}
 
 	const userSelect = 'SELECT * FROM Users WHERE userName = ?'
@@ -261,12 +263,14 @@ const login = async (req, res) => {
 	console.log('POST /api/login Users select results: ', users)
 
 	if (!users || !users.length) {
-		return res.status(404).send({ message: 'user not found' })
+		console.log('POST /api/login error - user not found')
+		return res.status(200).send(invalidLogin)
 	}
 
 	const passwordIsValid = bcrypt.compareSync(req.body.password, users[0].password)
 	if (!passwordIsValid) {
-		return res.status(401).send({ message: 'invalid password' })
+		console.log('POST /api/login error - bad password')
+		return res.status(200).send(invalidLogin)
 	}
 
 	const token = jwt.sign(
